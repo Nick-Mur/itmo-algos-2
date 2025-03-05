@@ -72,13 +72,13 @@ def file_io():
       - Вызывает основной алгоритм.
       - Записывает результат в файл output.txt.
     """
-    with open("input.txt", "r") as f:
+    with open("txt/input.txt", "r") as f:
         parts = f.read().strip().split()
         M, N = int(parts[0]), int(parts[1])
 
     result = count_pretty_patterns(M, N)
 
-    with open("output.txt", "w") as f:
+    with open("txt/output.txt", "w") as f:
         f.write(str(result))
 
 
