@@ -1,21 +1,47 @@
 from utils import time_memory_decorator
+from typing import Dict, List
 
 
-@time_memory_decorator
-def count_pretty_patterns(M, N):
+def is_valid_transition(mask1: int, mask2: int, cols: int) -> bool:
     """
-    Вычисляет количество симпатичных узоров для двора размера M×N.
-    Узоры симпатичные, если нигде не встречается квадрат 2×2, полностью заполненный плитками одного цвета.
+    Проверяет, допускается ли переход от раскраски mask1 к раскраске mask2,
+    чтобы не образовался квадрат 2×2, заполненный плитками одного цвета.
 
     Параметры:
-      M, N - целые положительные числа, такие что 1 ≤ M*N ≤ 30.
+      mask1 (int): Битовая маска первой строки.
+      mask2 (int): Битовая маска второй строки.
+      cols (int): Число столбцов (длина строки).
 
     Возвращает:
-      Количество симпатичных узоров.
+      bool: True, если переход допустим, иначе False.
+    """
+    for i in range(cols - 1):
+        a = (mask1 >> i) & 1
+        b = (mask1 >> (i + 1)) & 1
+        c = (mask2 >> i) & 1
+        d = (mask2 >> (i + 1)) & 1
+        if a == b == c == d:
+            return False
+    return True
+
+
+def count_pretty_patterns(M: int, N: int) -> int:
+    """
+    Вычисляет количество симпатичных узоров для двора размера M×N.
+    Узор считается симпатичным, если нигде не встречается квадрат 2×2,
+    полностью заполненный плитками одного цвета.
+
+    Параметры:
+      M (int): Число, представляющее одну сторону двора (должно быть положительным).
+      N (int): Число, представляющее другую сторону двора (должно быть положительным).
+              Допускается условие 1 ≤ M*N ≤ 30.
+
+    Возвращает:
+      int: Количество различных симпатичных узоров.
 
     Генерирует:
-      ValueError, если M или N не являются положительными целыми числами,
-      либо если произведение M*N превышает 30.
+      ValueError: Если M или N не являются положительными целыми числами,
+                  либо если произведение M*N превышает 30.
     """
     # Проверка корректности входных данных
     if not (isinstance(M, int) and isinstance(N, int)):
@@ -25,58 +51,54 @@ def count_pretty_patterns(M, N):
     if M * N > 30:
         raise ValueError("Product of M and N must not exceed 30")
 
-    # Для оптимизации считаем большую сторону за число строк, меньшую – за число столбцов
-    rows = max(M, N)
-    cols = min(M, N)
+    # Определяем число строк и столбцов:
+    # больший размер будем считать числом строк, меньший – числом столбцов.
+    rows: int = max(M, N)
+    cols: int = min(M, N)
 
-    total_masks = 2 ** cols  # все возможные состояния строки
-
-    # Если двор состоит из одной строки, количество узоров равно количеству масок
+    total_masks: int = 2 ** cols  # общее число состояний строки
     if rows == 1:
         return total_masks
 
-    states = list(range(total_masks))
+    # Генерируем список всех состояний строки.
+    states: List[int] = list(range(total_masks))
 
-    # Вычисляем допустимые переходы между двумя соседними строками
-    valid_transitions = {mask: [] for mask in states}
-    for mask1 in states:
-        for mask2 in states:
-            for i in range(cols - 1):
-                a = (mask1 >> i) & 1
-                b = (mask1 >> (i + 1)) & 1
-                c = (mask2 >> i) & 1
-                d = (mask2 >> (i + 1)) & 1
-                # Если в квадрате 2×2 все плитки одного цвета – переход недопустим
-                if a == b == c == d:
-                    break
-            else:
-                valid_transitions[mask1].append(mask2)
+    # Предварительно вычисляем допустимые переходы между двумя соседними строками.
+    valid_transitions: Dict[int, List[int]] = {
+        mask: [mask2 for mask2 in states if is_valid_transition(mask, mask2, cols)]
+        for mask in states
+    }
 
-    # Динамическое программирование по строкам
-    dp_prev = [1] * total_masks  # для первой строки любая маска допустима
+    # Инициализируем динамическое программирование:
+    # dp_prev[mask] хранит количество способов получить раскраску mask для предыдущей строки.
+    dp_prev: List[int] = [1] * total_masks
+
+    # Итеративно обрабатываем каждую последующую строку.
     for _ in range(1, rows):
-        dp_curr = [0] * total_masks
+        dp_curr: List[int] = [0] * total_masks
         for mask1 in states:
-            if dp_prev[mask1]:
+            ways = dp_prev[mask1]
+            if ways:
                 for mask2 in valid_transitions[mask1]:
-                    dp_curr[mask2] += dp_prev[mask1]
+                    dp_curr[mask2] += ways
         dp_prev = dp_curr
 
     return sum(dp_prev)
 
 
-def file_io():
+@time_memory_decorator
+def file_io() -> None:
     """
     Обрабатывает файлы:
-      - Читает входные данные из файла input.txt.
-      - Вызывает основной алгоритм.
-      - Записывает результат в файл output.txt.
+      - Читает входные данные из файла txt/input.txt.
+      - Вызывает функцию count_pretty_patterns для вычисления результата.
+      - Записывает результат в файл txt/output.txt.
     """
     with open("txt/input.txt", "r") as f:
         parts = f.read().strip().split()
         M, N = int(parts[0]), int(parts[1])
 
-    result = count_pretty_patterns(M, N)
+    result: int = count_pretty_patterns(M, N)
 
     with open("txt/output.txt", "w") as f:
         f.write(str(result))
