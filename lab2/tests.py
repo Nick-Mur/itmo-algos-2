@@ -1,26 +1,6 @@
 import unittest
 from typing import List, Tuple
-from lab2.main import build_rope, rope_cut_and_paste, traverse
-
-
-def apply_queries(s: str, queries: List[Tuple[int, int, int]]) -> str:
-    """
-    Применяет последовательность запросов к строке, используя структуру Rope.
-
-    Параметры:
-      s (str): Исходная строка.
-      queries (List[Tuple[int, int, int]]): Список запросов, где каждый запрос задаётся тройкой (i, j, k):
-            - i (int): Начальный индекс подстроки (включительно).
-            - j (int): Конечный индекс подстроки (включительно).
-            - k (int): Позиция вставки (при k = 0 вставка в начало).
-
-    Возвращает:
-      str: Итоговая строка после применения всех запросов.
-    """
-    root = build_rope(s)
-    for i, j, k in queries:
-        root = rope_cut_and_paste(root, i, j, k)
-    return traverse(root)
+from lab2.main import apply_queries
 
 
 class TestRopeOperations(unittest.TestCase):

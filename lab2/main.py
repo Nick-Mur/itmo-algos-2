@@ -2,134 +2,97 @@ from utils import time_memory_decorator
 from typing import Optional, Tuple, List
 
 
+# Класс Node представляет узел splay-дерева, который хранит один символ строки.
 class Node:
+    __slots__ = ['ch', 'left', 'right', 'parent', 'size']
+
     def __init__(self, ch: str) -> None:
-        """
-        Инициализирует узел rope со значением символа.
-
-        Параметры:
-          ch (str): Символ, хранящийся в узле.
-        """
-        self.ch: str = ch
-        self.left: Optional['Node'] = None
-        self.right: Optional['Node'] = None
-        self.parent: Optional['Node'] = None
-        self.size: int = 1
+        # Инициализация узла: сохраняем символ, ссылки на детей и родителя, а также размер поддерева.
+        self.ch: str = ch           # Символ, который хранится в узле.
+        self.left: Optional['Node'] = None   # Ссылка на левое поддерево.
+        self.right: Optional['Node'] = None  # Ссылка на правое поддерево.
+        self.parent: Optional['Node'] = None # Ссылка на родительский узел.
+        self.size: int = 1          # Размер поддерева (начально 1, так как узел сам по себе).
 
 
+# Функция update пересчитывает поле size для узла, суммируя размеры его поддеревьев.
 def update(node: Optional[Node]) -> None:
-    """
-    Обновляет размер поддерева узла.
-
-    Параметры:
-      node (Optional[Node]): Узел для обновления.
-    """
     if node is None:
         return
-    node.size = 1
+    node.size = 1  # Начинаем с единицы для самого узла.
     if node.left:
-        node.size += node.left.size
-        node.left.parent = node
+        node.size += node.left.size  # Добавляем размер левого поддерева.
+        node.left.parent = node      # Обновляем родительскую ссылку для левого ребенка.
     if node.right:
-        node.size += node.right.size
-        node.right.parent = node
+        node.size += node.right.size  # Добавляем размер правого поддерева.
+        node.right.parent = node     # Обновляем родительскую ссылку для правого ребенка.
 
 
+# Функция rotate выполняет поворот узла x относительно его родителя.
 def rotate(x: Node) -> None:
-    """
-    Выполняет вращение узла x относительно его родителя.
-
-    Параметры:
-      x (Node): Узел, который поднимается.
-    """
-    p = x.parent
+    p = x.parent         # Узнаем родителя узла x.
     if not p:
-        return
-    g = p.parent
+        return           # Если родителя нет, поворот невозможен.
+    g = p.parent         # Узнаем родителя родителя (необходим для переназначения связи).
     if p.left == x:
+        # Если x является левым ребенком, переносим правое поддерево x на место x у p.
         p.left = x.right
         if x.right:
             x.right.parent = p
-        x.right = p
+        x.right = p      # x становится родителем p.
     else:
+        # Если x является правым ребенком, переносим левое поддерево x на место x у p.
         p.right = x.left
         if x.left:
             x.left.parent = p
-        x.left = p
-    p.parent = x
-    x.parent = g
+        x.left = p       # x становится родителем p.
+    p.parent = x         # p теперь является ребенком x.
+    x.parent = g         # x наследует родителя от p.
     if g:
+        # Если существует g, заменяем p на x в его поддереве.
         if g.left == p:
             g.left = x
         else:
             g.right = x
-    update(p)
-    update(x)
+    update(p)            # Обновляем размер поддерева для p.
+    update(x)            # Обновляем размер поддерева для x.
 
 
+# Функция splay поднимает узел x до корня дерева.
 def splay(x: Node) -> Node:
-    """
-    Поднимает узел x до корня splay-дерева.
-
-    Параметры:
-      x (Node): Узел для подъёма.
-
-    Возвращает:
-      Node: Новый корень дерева.
-    """
     while x.parent:
         p = x.parent
         g = p.parent
         if g:
+            # Выбираем тип поворота: zig-zig или zig-zag.
             if (g.left == p) == (p.left == x):
-                rotate(p)  # Zig-zig
+                rotate(p)  # Zig-zig: сначала поворачиваем родителя.
             else:
-                rotate(x)  # Zig-zag
-        rotate(x)
-    return x
+                rotate(x)  # Zig-zag: сначала поворачиваем сам узел x.
+        rotate(x)  # Выполняем поворот узла x.
+    return x  # После подъема x становится корнем дерева.
 
 
+# Функция merge объединяет два splay-дерева так, что все узлы из left идут до узлов из right.
 def merge(left: Optional[Node], right: Optional[Node]) -> Optional[Node]:
-    """
-    Объединяет два splay-дерева так, что все узлы left идут перед узлами right.
-
-    Параметры:
-      left (Optional[Node]): Левое дерево.
-      right (Optional[Node]): Правое дерево.
-
-    Возвращает:
-      Optional[Node]: Корень объединённого дерева.
-    """
     if left is None:
         return right
     if right is None:
         return left
     cur = left
+    # Находим самый правый узел в левом дереве (последний символ).
     while cur.right:
         cur = cur.right
-    left = splay(cur)
-    left.right = right
-    right.parent = left
-    update(left)
+    left = splay(cur)    # Поднимаем этот узел к корню.
+    left.right = right   # Присоединяем правое дерево как правое поддерево.
+    right.parent = left  # Устанавливаем родительскую связь.
+    update(left)         # Обновляем размер поддерева.
     return left
 
 
+# Функция split делит дерево на две части по индексу.
+# Левая часть содержит первые index элементов, правая – оставшиеся.
 def split(root: Optional[Node], index: int) -> Tuple[Optional[Node], Optional[Node]]:
-    """
-    Делит дерево на две части:
-      Левая часть содержит узлы с индексами [0, index-1],
-      Правая часть — с индексами [index, ...].
-
-    Параметры:
-      root (Optional[Node]): Корень дерева.
-      index (int): Позиция раздела (0 ≤ index ≤ size дерева).
-
-    Возвращает:
-      Tuple[Optional[Node], Optional[Node]]: (левая часть, правая часть).
-
-    Генерирует:
-      ValueError, если index вне диапазона.
-    """
     if root is None:
         return None, None
     if index < 0 or index > root.size:
@@ -140,143 +103,127 @@ def split(root: Optional[Node], index: int) -> Tuple[Optional[Node], Optional[No
         return root, None
 
     cur = root
+    # Используем размер поддеревьев, чтобы спуститься к нужному узлу.
     while True:
         left_size = cur.left.size if cur.left else 0
         if index < left_size:
-            cur = cur.left
+            cur = cur.left  # Ищем в левом поддереве.
         elif index > left_size:
-            index -= left_size + 1
+            index -= left_size + 1  # Учитываем левое поддерево и текущий узел.
             if cur.right is None:
-                # Это может произойти, если индекс равен размеру дерева, но обработано выше.
                 break
-            cur = cur.right
+            cur = cur.right  # Ищем в правом поддереве.
         else:
-            break
-    root = splay(cur)
-    left = root.left
+            break  # Нашли узел, где количество узлов в левом поддереве равно index.
+    root = splay(cur)  # Поднимаем найденный узел к корню.
+    left = root.left   # Левая часть – все узлы, находящиеся слева от корня.
     if left:
-        left.parent = None
-    root.left = None
-    update(root)
+        left.parent = None  # Отсоединяем левую часть от корня.
+    root.left = None   # Очищаем ссылку на левое поддерево у корня.
+    update(root)       # Обновляем размер корня.
     return left, root
 
 
+# Функция build_rope строит сбалансированное splay-дерево (rope) из заданной строки.
 def build_rope(s: str) -> Optional[Node]:
-    """
-    Строит сбалансированное splay-дерево (rope) из строки s за O(n).
-
-    Параметры:
-      s (str): Исходная строка.
-
-    Возвращает:
-      Optional[Node]: Корень дерева.
-    """
-
     def build(left: int, right: int) -> Optional[Node]:
         if left > right:
-            return None
-        mid = (left + right) // 2
-        node = Node(s[mid])
-        node.left = build(left, mid - 1)
+            return None  # Если диапазон пуст, возвращаем None.
+        mid = (left + right) // 2  # Находим средний индекс для балансировки.
+        node = Node(s[mid])        # Создаем узел для символа из середины.
+        node.left = build(left, mid - 1)   # Рекурсивно строим левое поддерево.
         if node.left:
             node.left.parent = node
-        node.right = build(mid + 1, right)
+        node.right = build(mid + 1, right)  # Рекурсивно строим правое поддерево.
         if node.right:
             node.right.parent = node
-        update(node)
+        update(node)  # Обновляем размер узла с учетом его поддеревьев.
         return node
-
     return build(0, len(s) - 1)
 
 
+# Функция rope_cut_and_paste реализует основную операцию: вырезание подстроки S[i...j] и вставка её
+# после k-го символа оставшейся строки.
 def rope_cut_and_paste(root: Optional[Node], i: int, j: int, k: int) -> Optional[Node]:
-    """
-    Выполняет операцию вырезания подстроки s[i...j] из rope и вставляет её после k-го символа оставшейся строки.
-
-    Параметры:
-      root (Optional[Node]): Корень rope.
-      i (int): Начальный индекс подстроки (включительно).
-      j (int): Конечный индекс подстроки (включительно).
-      k (int): Позиция вставки (при k=0 вставка в начало).
-
-    Возвращает:
-      Optional[Node]: Новый корень rope после операции.
-
-    Генерирует:
-      ValueError: Если i > j, или индексы невалидны.
-    """
+    # Проверяем, что индексы неотрицательны и что i не больше j.
     if i < 0 or j < 0 or k < 0:
         raise ValueError("Indices must be non-negative")
     if i > j:
         raise ValueError("Invalid query: i must be <= j")
 
-    # Разбиваем дерево на A и B: A содержит [0, i-1], B содержит [i, ...]
+    # Разбиваем дерево на две части: A содержит символы [0, i-1], а B содержит символы [i, конец].
     A, B = split(root, i)
     if B is None or B.size < (j - i + 1):
         raise ValueError("Invalid query: j is out of range")
 
-    # Разбиваем B на C и D: C содержит [i, j], D содержит [j+1, ...]
+    # Из дерева B вырезаем поддерево C (подстрока S[i...j]) и получаем D, которое содержит оставшиеся символы.
     C, D = split(B, j - i + 1)
-    # Объединяем A и D — получаем дерево без вырезанной подстроки
+    # Объединяем A и D, чтобы получить дерево без вырезанной подстроки.
     merged = merge(A, D)
-    # Проверяем диапазон для k
+    # Проверяем, что позиция вставки k не превышает размер обновленного дерева.
     rem_size = merged.size if merged else 0
     if k < 0 or k > rem_size:
         raise ValueError("Invalid query: k is out of range")
-    # Разбиваем merged на L и R: L содержит [0, k-1], R содержит [k, ...]
+    # Разбиваем дерево merged на L (первые k символов) и R (оставшиеся символы).
     L, R = split(merged, k)
-    # Вставляем вырезанную часть между L и R
+    # Вставляем вырезанную подстроку C между L и R и возвращаем итоговое дерево.
     return merge(merge(L, C), R)
 
 
+# Функция traverse выполняет in-order обход дерева и собирает символы в итоговую строку.
 def traverse(root: Optional[Node]) -> str:
-    """
-    Выполняет in-order обход rope и собирает итоговую строку.
-
-    Параметры:
-      root (Optional[Node]): Корень дерева.
-
-    Возвращает:
-      str: Строка, полученная из дерева.
-    """
     result: List[str] = []
     stack: List[Node] = []
     cur = root
+    # Обход дерева с использованием стека: идем влево, затем обрабатываем узлы, потом идем вправо.
     while stack or cur:
         if cur:
             stack.append(cur)
-            cur = cur.left
+            cur = cur.left  # Переход к левому поддереву.
         else:
             cur = stack.pop()
-            result.append(cur.ch)
-            cur = cur.right
+            result.append(cur.ch)  # Добавляем символ текущего узла.
+            cur = cur.right  # Переход к правому поддереву.
     return "".join(result)
 
 
+# Функция file_io осуществляет ввод исходных данных, выполнение операций над деревом и вывод результата в файл.
 @time_memory_decorator
 def file_io() -> None:
-    """
-    Обрабатывает файлы:
-      - Читает входные данные из файла txt/input.txt.
-      - Выполняет операции вырезания и вставки подстроки в структуре Rope.
-      - Записывает итоговую строку в файл txt/output.txt.
-    """
     with open("txt/input.txt", "r") as f:
         lines = f.read().splitlines()
-    s: str = lines[0].strip()
-    n: int = int(lines[1].strip())
+    s: str = lines[0].strip()  # Первая строка – исходная строка S.
+    n: int = int(lines[1].strip())  # Вторая строка – количество запросов.
     queries: List[Tuple[int, int, int]] = [
         tuple(map(int, line.split())) for line in lines[2:2 + n]
     ]
 
-    root = build_rope(s)
-    for i, j, k in queries:
-        root = rope_cut_and_paste(root, i, j, k)
-    result: str = traverse(root)
+    result = apply_queries(s=s, queries=queries)
 
     with open("txt/output.txt", "w") as f:
         f.write(result)
 
 
+def apply_queries(s: str, queries: List[Tuple[int, int, int]]) -> str:
+    """
+    Применяет последовательность запросов к строке, используя структуру Rope.
+
+    Параметры:
+      s (str): Исходная строка.
+      queries (List[Tuple[int, int, int]]): Список запросов, где каждый запрос задаётся тройкой (i, j, k):
+            - i (int): Начальный индекс подстроки (включительно).
+            - j (int): Конечный индекс подстроки (включительно).
+            - k (int): Позиция вставки (при k = 0 вставка в начало).
+
+    Возвращает:
+      str: Итоговая строка после применения всех запросов.
+    """
+    root = build_rope(s)
+    for i, j, k in queries:
+        root = rope_cut_and_paste(root, i, j, k)
+    return traverse(root)
+
+
+# Точка входа в программу: запускаем file_io, если скрипт запущен напрямую.
 if __name__ == "__main__":
     file_io()
