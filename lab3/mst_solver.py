@@ -9,6 +9,7 @@ mst_solver.py
 
 import math
 from typing import List, Tuple
+from utils import time_memory_decorator
 
 # Определяем тип для координат точки
 Point = Tuple[int, int]
@@ -42,7 +43,7 @@ def calculate_distance(point1: Point, point2: Point) -> float:
 
 
 # --- Основная функция для вычисления MST ---
-
+@time_memory_decorator
 def calculate_mst_length(points_coords: PointList) -> float:
     """
     Вычисляет длину минимального остовного дерева (MST) для заданного списка точек
